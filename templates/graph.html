@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{ question }}</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+	<script src="https://d3js.org/d3.v4.js"></script>
+</head>
+<body>
+
+	<div class="container">
+		<header style="text-align: center">
+			<h1>{{ question }}</h1>
+		</header>
+
+		<hr>
+		
+		<div class="row">
+			<div class="col-lg-8">
+				<div id="my_dataviz" data-source-url="{{ data_source_url }}"></div>
+			</div>
+
+			<div class="col-lg-4">
+				<div class="card">
+					<div class="card-header">
+					    Your Vote
+					 </div>
+					<div class="card-img-top">
+						<a href="{{ response_url }}">{{ respond_svg }}</a>
+					</div>
+					<div class="card-body">
+						<p class="card-text">
+							Put in your vote at <a href="{{ response_url }}">{{ response_url }}</a>
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	
+		<footer>
+			<hr>
+			<a href="/">Home</a>
+		</footer>
+	</div>
+
+	<script src="{{ url_for('static', filename='graph.js') }}"></script>
+</body>
+</html>

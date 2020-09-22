@@ -1,36 +1,21 @@
-r"""
-To run this in Windows...
-
-    py -m venv venv
-    venv\Scripts\pip install flask pymongo qrcode[pil] requests authlib
-    set MONGO_DB=voter
-    set MONGO_URL=mongodb://kubla.redbrick.xyz
-    set CLIENT_ID=OexMrdtxjRHb9L7TpjAysVDCZ0lZF5pI
-    set AUTH0_DOMAIN=faat.auth0.com
-    set CLIENT_SECRET=v2i76AvgNOe9JHPF60loawFkJ8XM0AzcrwHyoOXAg8ZBDl1oOE8oyzcB1xy9j-y7
-    set FLASK_APP=voteapp.py
-    set FLASK_ENV=development
-    venv\Scripts\flask.exe run
-"""
-
+from functools import wraps
 import io
 import os
-from functools import wraps
 import re
-from flask import Flask, render_template, session, url_for, request, abort, jsonify, redirect
-import pymongo
 from urllib.parse import urlencode
+
+from authlib.integrations.flask_client import OAuth
+from flask import Flask, render_template, session, url_for, request, abort, jsonify, redirect
+from jinja2 import Markup
+import pymongo
 import qrcode
 import qrcode.image.svg
-from jinja2 import Markup
-from authlib.integrations.flask_client import OAuth
 
 app = Flask("myapp")
-app.secret_key = b"fal30zd-()(3p2m_-214"
+app.secret_key = os.environ["SECRET_KEY"]
 
 mc = pymongo.MongoClient(os.environ["MONGO_URL"])
 db = mc[os.environ["MONGO_DB"]]
-
 
 oauth = OAuth(app)
 

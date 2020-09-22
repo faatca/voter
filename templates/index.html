@@ -7,7 +7,20 @@
 </head>
 <body>
 	<h1>Votes</h1>
+	{% if userinfo %}
+	<p>Hey {{userinfo["name"]}}! Nice to see you.</p>
+	<p>Start a new survey here... <a href="/new-survey">new survey</a>.</p>
+
+	<ul>
+		{% for g in graphs %}
+		<li><a href="{{ url_for('get_graph', slug=g['slug']) }}">{{ g.question }}</a></li>
+		{% endfor %}
+	</ul>
+
+	<p>Log out <a href="/logout">here</a></p>
+	{% else %}
 	<p>Welcome to my simple voting app.</p>
-	<p>Start your own new survey: <a href="/new-survey">new survey</a>.</p>
+	<a class="btn btn-primary btn-lg btn-login btn-block" href="/login">Log In</a>
+	{% endif %}
 </body>
 </html>

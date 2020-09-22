@@ -1,12 +1,29 @@
-from flask import Flask, render_template, session, url_for, request, abort, jsonify, redirect
+r"""
+To run this in Windows...
+
+    py -m venv venv
+    venv\Scripts\pip install flask pymongo qrcode[pil] requests authlib
+    set MONGO_DB=voter
+    set MONGO_URL=mongodb://kubla.redbrick.xyz
+    set CLIENT_ID=OexMrdtxjRHb9L7TpjAysVDCZ0lZF5pI
+    set AUTH0_DOMAIN=faat.auth0.com
+    set CLIENT_SECRET=v2i76AvgNOe9JHPF60loawFkJ8XM0AzcrwHyoOXAg8ZBDl1oOE8oyzcB1xy9j-y7
+    set FLASK_APP=voteapp.py
+    set FLASK_ENV=development
+    venv\Scripts\flask.exe run
+"""
+
 import io
 import os
-import pymongo
+from functools import wraps
 import re
+from flask import Flask, render_template, session, url_for, request, abort, jsonify, redirect
+import pymongo
+from urllib.parse import urlencode
 import qrcode
 import qrcode.image.svg
 from jinja2 import Markup
-
+from authlib.integrations.flask_client import OAuth
 
 app = Flask("myapp")
 app.secret_key = b"fal30zd-()(3p2m_-214"
@@ -14,26 +31,79 @@ app.secret_key = b"fal30zd-()(3p2m_-214"
 mc = pymongo.MongoClient(os.environ["MONGO_URL"])
 db = mc[os.environ["MONGO_DB"]]
 
-# py -m venv venv
-# venv\Scripts\pip install flask pymongo qrcode[pil] 
-# set MONGO_DB=voter
-# set MONGO_URL=mongodb://kubla.redbrick.xyz
-# set FLASK_APP=voteapp.py
-# set FLASK_ENV=development
-# venv\Scripts\flask.exe run
+
+oauth = OAuth(app)
+
+auth0 = oauth.register(
+    "auth0",
+    client_id=os.environ["CLIENT_ID"],
+    client_secret=os.environ["CLIENT_SECRET"],
+    api_base_url=f"https://{os.environ['AUTH0_DOMAIN']}",
+    access_token_url=f'https://{os.environ["AUTH0_DOMAIN"]}/oauth/token',
+    authorize_url=f'https://{os.environ["AUTH0_DOMAIN"]}/authorize',
+    client_kwargs={
+        "scope": "openid profile email",
+    },
+)
+
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "profile" not in session:
+            # Redirect to Login page here
+            return redirect("/")
+        return f(*args, **kwargs)
+
+    return decorated
 
 
 @app.route("/")
 def get_index():
-    return render_template("index.html")
+    if "profile" in session:
+        graphs = list(db.graphs.find({"userId": session["profile"]["user_id"]}))
+    else:
+        graphs = None
+    return render_template("index.html", userinfo=session.get('profile'), graphs=graphs)
+
+
+@app.route("/login")
+def login():
+    return auth0.authorize_redirect(redirect_uri=url_for("callback_handling", _external=True))
+
+
+@app.route("/callback")
+def callback_handling():
+    # Handles response from token endpoint
+    auth0.authorize_access_token()
+    resp = auth0.get("userinfo")
+    userinfo = resp.json()
+
+    # Store the user information in flask session.
+    session["jwt_payload"] = userinfo
+    session["profile"] = {
+        "user_id": userinfo["sub"],
+        "name": userinfo["name"],
+        "picture": userinfo["picture"],
+    }
+    return redirect("/")
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    params = {'returnTo': url_for('get_index', _external=True), 'client_id': os.environ["CLIENT_ID"]}
+    return redirect(auth0.api_base_url + '/v2/logout?' + urlencode(params))
 
 
 @app.route("/new-survey")
+@requires_auth
 def get_new_survey():
     return render_template("new-survey.html")
 
 
 @app.route("/new-survey", methods=["POST"])
+@requires_auth
 def post_new_survey():
     errors = []
     slug = request.form["slug"].strip()
@@ -76,6 +146,7 @@ def post_new_survey():
     obj = {
         "slug": request.form["slug"],
         "question": request.form["question"],
+        "userId": session["profile"]["user_id"],
         "data": [{"group": c, "value": 0} for c in choices],
     }
     db.graphs.insert_one(obj)
@@ -101,6 +172,7 @@ def get_graph(slug):
         data_source_url=data_source_url,
         response_url=response_url,
         respond_svg=Markup(respond_svg),
+        userinfo=session.get('profile')
     )
 
 

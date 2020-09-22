@@ -13,5 +13,6 @@ set AUTH0_DOMAIN=faat.auth0.com
 set CLIENT_SECRET=secret-goes-here
 set FLASK_APP=voteapp.py
 set FLASK_ENV=development
+set SECRET_KEY=abc-123-top-secret-key-for-sessions
 venv\Scripts\flask.exe run
 ```

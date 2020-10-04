@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>It's your time to shine</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/light.min.css">
+</head>
+<body>
+	<h1>It's your time to shine</h1>
+	<p>{{ question.question }}</p>
+	<form action="" method="POST">
+		{% for choice in question.data %}
+		<input type="submit" name=choice value="{{ choice.group }}" >
+		{% endfor %}
+	</form>
+</body>
+</html>

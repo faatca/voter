@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{ seq.title }}</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/light.min.css">
+</head>
+<body>
+	<h1>{{ seq.title }}</h1>
+	<p>Awesome! You've got your new sequence going!</p>
+
+	<p>
+		<a href="{{ url_for('get_draft_sequence_update', slug=seq['slug']) }}">
+			Change the sequence title
+		</a>
+	</p>
+
+	<p>
+		<a href="{{ url_for('get_draft_sequence_new_question', slug=seq['slug']) }}">
+			Add new sequence question
+		</a>
+	</p>
+
+	{% if questions %}
+	<ul>
+	{% for question in questions %}
+		<li>
+			{{ question["question"] }} ({{ question.data|join(', ', attribute='group') }})
+			<a href="{{ url_for('get_draft_sequence_question_delete', slug=seq['slug'], question_slug=question['slug']) }}">
+				Delete
+			</a>
+		</li>
+	{% endfor %}
+	</ul>
+	{% endif %}
+
+	<p>When you're ready to go, let's get it started: <a href="{{ url_for('get_sequence_dashboard', slug=seq['slug']) }}">{{ seq.title }}</a></p>
+</body>
+</html>

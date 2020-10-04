@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Are you sure?</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/light.min.css">
+</head>
+<body>
+	<h1>Are you sure?</h1>
+	<p>Are you sure you want to delete this question from your "{{ seq.title }}" sequence?</p>
+
+	<blockquote>
+		{{ question.question }}
+		<ul>
+			{% for data in question.data %}
+			<li>{{ data.group }}</li>
+			{% endfor %}
+		</ul>
+	</blockquote>
+
+	<form action="{{ url_for('get_draft_sequence_question_delete', slug=seq['slug'], question_slug=question['slug']) }}" method="POST">
+		<button type="submit">Delete</button>
+		<a href="{{ url_for('get_draft_sequence', slug=seq['slug']) }}">Cancel</a>
+	</form>
+</body>
+</html>

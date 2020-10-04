@@ -3,11 +3,34 @@
 <head>
 	<title>Votes</title>
 	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/light.min.css">
+	<style type="text/css">
+		.sr-only {
+		  position: absolute;
+		  width: 1px;
+		  height: 1px;
+		  padding: 0;
+		  margin: -1px;
+		  overflow: hidden;
+		  clip: rect(0,0,0,0);
+		  border: 0;
+		}
+	</style>
 </head>
 <body>
 	<h1>Votes</h1>
 	<p>Welcome to my simple voting app.</p>
-	<p>Start your own new survey: <a href="/new-survey">new survey</a>.</p>
+
+	<p>You can set up a new sequence: <a href="/new-sequence">new sequence</a>.</p>
+
+	<p>Or, you can start your own new survey: <a href="/new-survey">new survey</a>.</p>
+
+	<form action="" method="get">
+		<legend>Use your code to join a session</legend>
+		<label for="code" class="sr-only">Code</label>
+		<input type="text" name="code" placeholder="your-code-here">
+		<button type="submit">Join</button>
+	</form>
 </body>
 </html>

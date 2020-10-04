@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{ seq.title }}</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/light.min.css">
+</head>
+<body>
+	<h1>{{ seq.title }}</h1>
+	<p>Here is the link for folks to get in: <a href="{{ join_url }}">{{ join_url }}</a></p>
+
+	<p><a href="{{ join_url }}">{{ join_svg }}</a></p>
+
+	<p>The code is: <b>{{ seq.slug }}</b></p>
+
+	<form action="{{ url_for('post_sequence_dashboard_start', slug=seq['slug']) }}" method="POST">
+		<button type="submit">Start</button>
+	</form>
+</body>
+</html>

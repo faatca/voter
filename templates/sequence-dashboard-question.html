@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{ current_question.question }}</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/light.min.css">
+</head>
+<body>
+	<header>
+		<p style="float: right;">{{ seq.title }}</p>
+		<h1>{{ current_question.question }}</h1>
+	</header>
+	<hr>
+
+	<div id="my_dataviz" data-source-url="{{ data_source_url }}"></div>
+
+	<form action="{{ url_for('post_sequence_dashboard_progress', slug=seq['slug']) }}" method="POST">
+		{% if previous_question %}
+		<button type="submit" name="question" value="{{ previous_question['slug'] }}">Previous</button>
+		{% endif %}
+		{% if next_question %}
+		<button type="submit" name="question" value="{{ next_question['slug'] }}">Next</button>
+		{% endif %}
+	</form>
+
+	<p>
+		Come join us with the code <pre><b>{{seq.slug}}</b></pre> or use this link
+		<a href="{{ join_url }}">{{ join_url }}</a>.
+	</p>
+
+	<script src="https://d3js.org/d3.v4.js"></script>
+	<script src="{{ url_for('static', filename='graph.js') }}"></script>
+	<script type="text/javascript">
+		function refreshGraph() {
+			const element = document.getElementById('my_dataviz');
+			const sourceUrl = element.getAttribute("data-source-url");
+			getJSON(sourceUrl, (status, data) => update(data))
+		}
+
+		refreshGraph();
+		setInterval(refreshGraph, 3000);
+	</script>
+</body>
+</html>

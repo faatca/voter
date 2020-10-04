@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>New Sequence</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/kognise/water.css@latest/dist/light.min.css">
+</head>
+<body>
+	<h1>New Sequence</h1>
+
+	<p>Here there! Let's set up a new survey sequence.</p>
+	<form action="/new-sequence" method="POST">
+		<label>Title</label>
+		<input type="text" name="title" placeholder="Conference Review" value="{{title}}"/>
+
+		<label>Slug</label>
+		<input type="slug" name="slug" placeholder="use-letters-and-dashes" pattern="[a-z0-9-]+" value={{slug}}>
+
+		{% for err in errors %}
+		<p>{{ err }}</p>
+		{% endfor %}
+
+		<button type="submit">Add</button>
+	</form>
+</body>
+</html>

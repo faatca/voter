@@ -73,12 +73,3 @@ function update(data) {
     .exit()
     .remove()
 }
-
-function refreshGraph() {
-  const element = document.getElementById('my_dataviz');
-  const sourceUrl = element.getAttribute("data-source-url");
-  getJSON(sourceUrl, (status, data) => update(data))
-}
-
-refreshGraph();
-setInterval(refreshGraph, 3000);

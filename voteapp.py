@@ -1,46 +1,112 @@
+from functools import wraps
 import io
 import os
 import re
 import secrets
+from urllib.parse import urlencode
+
+from authlib.integrations.flask_client import OAuth
 from flask import Flask, render_template, session, url_for, request, abort, jsonify, redirect
+from jinja2 import Markup
 import pymongo
 import qrcode
 import qrcode.image.svg
-from jinja2 import Markup
 
 
 app = Flask("myapp")
-app.secret_key = b"fal30zd-()(3p2m_-214"
+app.secret_key = os.environ["SECRET_KEY"]
+
+oauth = OAuth(app)
+
+auth0 = oauth.register(
+    "auth0",
+    client_id=os.environ["CLIENT_ID"],
+    client_secret=os.environ["CLIENT_SECRET"],
+    api_base_url=f"https://{os.environ['AUTH0_DOMAIN']}",
+    access_token_url=f'https://{os.environ["AUTH0_DOMAIN"]}/oauth/token',
+    authorize_url=f'https://{os.environ["AUTH0_DOMAIN"]}/authorize',
+    client_kwargs={
+        "scope": "openid profile email",
+    },
+)
 
 mc = pymongo.MongoClient(os.environ["MONGO_URL"])
 db = mc[os.environ["MONGO_DB"]]
 
-# py -m venv venv
-# venv\Scripts\pip install flask pymongo qrcode[pil]
-# set MONGO_URL=mongodb://kubla.redbrick.xyz
-# set MONGO_DB=voter
-# set FLASK_APP=voteapp.py
-# set FLASK_ENV=development
-# venv\Scripts\flask.exe run
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "profile" not in session:
+            # Redirect to Login page here
+            return redirect("/")
+        return f(*args, **kwargs)
+
+    return decorated
 
 
 @app.route("/")
 def get_index():
     if request.args.get("code"):
-        seq = db.sequences.find_one({"slug": request.args["code"]})
+        code = request.args["code"].strip()
+        seq = db.sequences.find_one({"slug": code})
         if seq:
-            return redirect(url_for("get_sequence", slug=request.args["code"]))
+            return redirect(url_for("get_sequence", slug=code))
         else:
             return redirect(url_for("get_index"))
-    return render_template("index.html")
+
+    if "profile" in session:
+        graphs = list(db.graphs.find({"userId": session["profile"]["user_id"]}))
+        sequences = list(db.sequences.find({"userId": session["profile"]["user_id"]}))
+    else:
+        graphs = None
+        sequences = None
+
+    return render_template(
+        "index.html", profile=session.get("profile"), graphs=graphs, sequences=sequences,
+    )
+
+
+@app.route("/login")
+def login():
+    return auth0.authorize_redirect(redirect_uri=url_for("callback_handling", _external=True))
+
+
+@app.route("/callback")
+def callback_handling():
+    # Handles response from token endpoint
+    auth0.authorize_access_token()
+    resp = auth0.get("userinfo")
+    userinfo = resp.json()
+
+    # Store the user information in flask session.
+    session["jwt_payload"] = userinfo
+    session["profile"] = {
+        "user_id": userinfo["sub"],
+        "name": userinfo["name"],
+        "picture": userinfo["picture"],
+    }
+    return redirect("/")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    params = {
+        "returnTo": url_for("get_index", _external=True),
+        "client_id": os.environ["CLIENT_ID"],
+    }
+    return redirect(auth0.api_base_url + "/v2/logout?" + urlencode(params))
 
 
 @app.route("/new-sequence")
+@requires_auth
 def get_new_sequence():
     return render_template("new-sequence.html")
 
 
 @app.route("/new-sequence", methods=["POST"])
+@requires_auth
 def post_new_sequence():
     errors = []
     slug = request.form["slug"].strip()
@@ -64,16 +130,19 @@ def post_new_sequence():
             errors=errors,
         )
 
-    obj = {"slug": slug, "title": title, "current": None}
+    obj = {"slug": slug, "userId": session["profile"]["user_id"], "title": title, "current": None}
     db.sequences.insert_one(obj)
     return redirect(url_for("get_draft_sequence", slug=slug))
 
 
 @app.route("/draft-sequences/<slug>")
+@requires_auth
 def get_draft_sequence(slug):
     seq = db.sequences.find_one({"slug": slug})
     if not seq:
         abort(404)
+    if seq["userId"] != session["profile"]["user_id"]:
+        abort(401)
 
     questions = list(db.questions.find({"sequence.slug": slug}))
 
@@ -81,10 +150,14 @@ def get_draft_sequence(slug):
 
 
 @app.route("/draft-sequence/<slug>/update", methods=["GET", "POST"])
+@requires_auth
 def get_draft_sequence_update(slug):
     seq = db.sequences.find_one({"slug": slug})
     if not seq:
         abort(404)
+
+    if seq["userId"] != session["profile"]["user_id"]:
+        abort(401)
 
     if request.method == "POST":
         errors = []
@@ -102,10 +175,14 @@ def get_draft_sequence_update(slug):
 
 
 @app.route("/draft-sequence/<slug>/new-question", methods=["GET", "POST"])
+@requires_auth
 def get_draft_sequence_new_question(slug):
     seq = db.sequences.find_one({"slug": slug})
     if not seq:
         abort(404)
+
+    if seq["userId"] != session["profile"]["user_id"]:
+        abort(401)
 
     if request.method == "POST":
         errors = []
@@ -150,9 +227,10 @@ def get_draft_sequence_new_question(slug):
         obj = {
             "sequence": {"_id": seq["_id"], "slug": slug},
             "slug": request.form["slug"],
+            "userId": session["profile"]["user_id"],
             "question": request.form["question"],
             "data": [{"group": c, "value": 0} for c in choices],
-            "responders": []
+            "responders": [],
         }
         db.questions.insert_one(obj)
         return redirect(url_for("get_draft_sequence", slug=slug))
@@ -161,10 +239,14 @@ def get_draft_sequence_new_question(slug):
 
 
 @app.route("/draft-sequence/<slug>/questions/<question_slug>/delete", methods=["GET", "POST"])
+@requires_auth
 def get_draft_sequence_question_delete(slug, question_slug):
     seq = db.sequences.find_one({"slug": slug})
     if not seq:
         abort(404)
+
+    if seq["userId"] != session["profile"]["user_id"]:
+        abort(401)
 
     question = db.questions.find_one({"sequence.slug": slug, "slug": question_slug})
     if not question:
@@ -178,11 +260,15 @@ def get_draft_sequence_question_delete(slug, question_slug):
 
 
 @app.route("/s/<slug>/dashboard")
+@requires_auth
 def get_sequence_dashboard(slug):
     seq = db.sequences.find_one({"slug": slug})
 
     if not seq:
         abort(404)
+
+    if seq["userId"] != session["profile"]["user_id"]:
+        abort(401)
 
     join_url = url_for("get_sequence", slug=seq["slug"], _external=True)
     if not seq["current"]:
@@ -212,7 +298,9 @@ def get_sequence_dashboard(slug):
             next_question = q
             break
 
-    data_source_url = url_for("get_question_data", slug=slug, question_slug=current_question["slug"])
+    data_source_url = url_for(
+        "get_question_data", slug=slug, question_slug=current_question["slug"]
+    )
     return render_template(
         "sequence-dashboard-question.html",
         seq=seq,
@@ -220,27 +308,55 @@ def get_sequence_dashboard(slug):
         current_question=current_question,
         next_question=next_question,
         join_url=join_url,
-        data_source_url=data_source_url
+        data_source_url=data_source_url,
     )
 
 
 @app.route("/s/<slug>/questions/<question_slug>/data")
+@requires_auth
 def get_question_data(slug, question_slug):
+    seq = db.sequences.find_one({"slug": slug})
+
+    if not seq:
+        abort(404)
+
+    if seq["userId"] != session["profile"]["user_id"]:
+        abort(401)
+
     question = db.questions.find_one({"sequence.slug": slug, "slug": question_slug})
     if not question:
         abort(404)
+
     return jsonify(question["data"])
 
 
 @app.route("/s/<slug>/dashboard/start", methods=["POST"])
+@requires_auth
 def post_sequence_dashboard_start(slug):
+    seq = db.sequences.find_one({"slug": slug})
+
+    if not seq:
+        abort(404)
+
+    if seq["userId"] != session["profile"]["user_id"]:
+        abort(401)
+
     question = db.questions.find_one({"sequence.slug": slug}, sort=[("_id", pymongo.ASCENDING)])
     db.sequences.update_one({"slug": slug}, {"$set": {"current": question["slug"]}})
     return redirect(url_for("get_sequence_dashboard", slug=slug))
 
 
 @app.route("/s/<slug>/dashboard/move", methods=["POST"])
+@requires_auth
 def post_sequence_dashboard_progress(slug):
+    seq = db.sequences.find_one({"slug": slug})
+
+    if not seq:
+        abort(404)
+
+    if seq["userId"] != session["profile"]["user_id"]:
+        abort(401)
+
     db.sequences.update_one({"slug": slug}, {"$set": {"current": request.form["question"]}})
     return redirect(url_for("get_sequence_dashboard", slug=slug))
 
@@ -297,11 +413,13 @@ def get_sequence_question(slug, question_slug):
 
 
 @app.route("/new-survey")
+@requires_auth
 def get_new_survey():
     return render_template("new-survey.html")
 
 
 @app.route("/new-survey", methods=["POST"])
+@requires_auth
 def post_new_survey():
     errors = []
     slug = request.form["slug"].strip()
@@ -343,6 +461,7 @@ def post_new_survey():
 
     obj = {
         "slug": request.form["slug"],
+        "userId": session["profile"]["user_id"],
         "question": request.form["question"],
         "data": [{"group": c, "value": 0} for c in choices],
     }

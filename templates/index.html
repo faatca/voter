@@ -20,17 +20,62 @@
 </head>
 <body>
 	<h1>Votes</h1>
+
+	{% if profile %}
+	<p>Hey {{profile["name"]}}! Nice to see you.</p>
+
+	<h2>Sequences</h2>
+	{% if sequences %}
+	<p>Here are your sequences.</p>
+	<ul>
+		{% for s in sequences %}
+		<li><a href="{{ url_for('get_draft_sequence', slug=s['slug']) }}">{{ s.title }}</a></li>
+		{% endfor %}
+	</ul>
+	<p>
+		You can start another one here:
+		<a href="{{ url_for('get_new_sequence') }}">new sequence</a>.
+	</p>
+	{% else %}
+	<p>
+		It looks like you haven't started any sequences yet. You can start one sequence here:
+		<a href="{{ url_for('get_new_sequence') }}">new sequence</a>.
+	</p>
+	{% endif %}
+
+	<h2>Surveys</h2>
+	{% if graphs %}
+	<p>Here are your current surveys.</p>
+	<ul>
+		{% for g in graphs %}
+		<li><a href="{{ url_for('get_graph', slug=g['slug']) }}">{{ g.question }}</a></li>
+		{% endfor %}
+	</ul>
+	<p>You can start another one here: <a href="{{ url_for('get_new_survey') }}">new survey</a>.</p>
+	{% else %}
+	<p>Start your own survey here: <a href="{{ url_for('get_new_survey') }}">new survey</a>.</p>
+	{% endif %}
+
+	{% else %}
 	<p>Welcome to my simple voting app.</p>
+	{% endif %}
 
-	<p>You can set up a new sequence: <a href="/new-sequence">new sequence</a>.</p>
-
-	<p>Or, you can start your own new survey: <a href="/new-survey">new survey</a>.</p>
-
+	<h2>Join a session</h2>
 	<form action="" method="get">
 		<legend>Use your code to join a session</legend>
 		<label for="code" class="sr-only">Code</label>
 		<input type="text" name="code" placeholder="your-code-here">
 		<button type="submit">Join</button>
 	</form>
+
+	{% if profile %}
+	<p>Are you all done? <a href="/logout">Sign out</a></p>
+	{% else %}
+	<h2>Host your own</h2>
+	<p>
+		Do you want to start your own surveys or sequences?
+		<a class="btn btn-primary btn-lg btn-login btn-block" href="/login">Sign In or Sign Up</a>
+	</p>
+	{% endif %}
 </body>
 </html>

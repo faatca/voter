@@ -36,5 +36,7 @@
 	{% endif %}
 
 	<p>When you're ready to go, let's get it started: <a href="{{ url_for('get_sequence_dashboard', slug=seq['slug']) }}">{{ seq.title }}</a></p>
+
+	<a href="{{ url_for('get_index') }}">Home</a>
 </body>
 </html>
